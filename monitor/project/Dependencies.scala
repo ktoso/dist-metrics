@@ -38,9 +38,10 @@ object Dependencies {
   val akkaFull              = Seq(akkaActor, akkaSlf4j, akkaTestKit)
 
   // Spray
-  val sprayCan              = "cc.spray"              %   "spray-can"             % "0.9.3"
-  val sprayServer           = "cc.spray"              %   "spray-server"          % "0.9.0"
-  val sprayClient           = "cc.spray"              %   "spray-client"          % "0.9.0"
+  val sprayVersion = "1.0-M1"
+  val sprayCan              = "cc.spray"              %   "spray-can"             % sprayVersion
+  val sprayServer           = "cc.spray"              %   "spray-server"          % sprayVersion
+  val sprayClient           = "cc.spray"              %   "spray-client"          % sprayVersion
 
   // Scalate - templates
   val scalateWikitext = "org.fusesource.scalate" % "scalate-wikitext" % "1.5.3"

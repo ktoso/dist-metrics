@@ -40,7 +40,7 @@ object MonitorBuild extends Build {
     file("monitor"),
     settings = buildSettings ++
       Seq(
-        libraryDependencies ++= akkaFull ++ testing ++ Seq()
+        libraryDependencies ++= akkaFull ++ testing ++ Seq(sprayServer, sprayCan)
       ) ++
       Seq(
         mainClass in (Compile, packageBin) := Some("pl.project13.distmetrics.monitor.runner.Main")

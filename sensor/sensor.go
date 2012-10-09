@@ -60,6 +60,12 @@ func main() {
 	log.Printf("Host name configured as: %q", sensorHost)
 	log.Printf("Monitor configured at:   %q:%d", monitorHost, monitorPort)
 
+  //  dial to local monitor
+  d, _ := net.Dial("tcp", "localhost:9900")
+  d.Write([]byte("GET / HTTP/1.0\r\n\r\n"))
+  d.Close()
+  // end of local dial
+
 	c, err := net.Dial("tcp", "google.com:80")
 
 	if err != nil {
