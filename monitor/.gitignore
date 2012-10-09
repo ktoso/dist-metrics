@@ -1,0 +1,7 @@
+atlassian-ide-plugin.xml
+target
+project/target
+out
+jar
+*.class
+*.iml # use sbt gen-idea

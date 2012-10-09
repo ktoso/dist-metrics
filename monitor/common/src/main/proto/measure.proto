@@ -1,0 +1,12 @@
+option java_package = "pl.project13.distmetrics.common.proto";
+
+package distmetrics;
+
+import "common.proto";
+
+message Measurement {
+    required string     resourceId = 1;
+    required MetricType metricType = 2;
+    required string     value      = 3;
+    required int32      timestamp  = 4;
+}

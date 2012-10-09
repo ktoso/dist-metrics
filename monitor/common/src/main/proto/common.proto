@@ -1,0 +1,10 @@
+option java_package = "pl.project13.distmetrics.common.proto";
+
+package distmetrics;
+
+enum MetricType {
+    Cpu     = 1;
+    MemFree = 2;
+    MemUsed = 3;
+    MemMax  = 4;
+}

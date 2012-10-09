@@ -1,0 +1,19 @@
+option java_package = "pl.project13.distmetrics.common.proto";
+
+package distmetrics;
+
+import "common.proto";
+
+message SubscribeRequest {
+    required string     resourceId = 1;
+    required MetricType metricType = 2;
+}
+
+message SubscriptionCreatedResponse {
+    required string location = 1;
+}
+
+message SubscriptionResponse {
+    required string host = 1;
+    required int32  port = 2;
+}
