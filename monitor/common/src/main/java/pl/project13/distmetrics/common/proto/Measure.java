@@ -23,9 +23,9 @@ public final class Measure {
     boolean hasValue();
     String getValue();
     
-    // required int32 timestamp = 4;
+    // required int64 timestamp = 4;
     boolean hasTimestamp();
-    int getTimestamp();
+    long getTimestamp();
   }
   public static final class Measurement extends
       com.google.protobuf.GeneratedMessage
@@ -130,13 +130,13 @@ public final class Measure {
       }
     }
     
-    // required int32 timestamp = 4;
+    // required int64 timestamp = 4;
     public static final int TIMESTAMP_FIELD_NUMBER = 4;
-    private int timestamp_;
+    private long timestamp_;
     public boolean hasTimestamp() {
       return ((bitField0_ & 0x00000008) == 0x00000008);
     }
-    public int getTimestamp() {
+    public long getTimestamp() {
       return timestamp_;
     }
     
@@ -144,7 +144,7 @@ public final class Measure {
       resourceId_ = "";
       metricType_ = pl.project13.distmetrics.common.proto.Common.MetricType.Cpu;
       value_ = "";
-      timestamp_ = 0;
+      timestamp_ = 0L;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -184,7 +184,7 @@ public final class Measure {
         output.writeBytes(3, getValueBytes());
       }
       if (((bitField0_ & 0x00000008) == 0x00000008)) {
-        output.writeInt32(4, timestamp_);
+        output.writeInt64(4, timestamp_);
       }
       getUnknownFields().writeTo(output);
     }
@@ -209,7 +209,7 @@ public final class Measure {
       }
       if (((bitField0_ & 0x00000008) == 0x00000008)) {
         size += com.google.protobuf.CodedOutputStream
-          .computeInt32Size(4, timestamp_);
+          .computeInt64Size(4, timestamp_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -341,7 +341,7 @@ public final class Measure {
         bitField0_ = (bitField0_ & ~0x00000002);
         value_ = "";
         bitField0_ = (bitField0_ & ~0x00000004);
-        timestamp_ = 0;
+        timestamp_ = 0L;
         bitField0_ = (bitField0_ & ~0x00000008);
         return this;
       }
@@ -495,7 +495,7 @@ public final class Measure {
             }
             case 32: {
               bitField0_ |= 0x00000008;
-              timestamp_ = input.readInt32();
+              timestamp_ = input.readInt64();
               break;
             }
           }
@@ -600,15 +600,15 @@ public final class Measure {
         onChanged();
       }
       
-      // required int32 timestamp = 4;
-      private int timestamp_ ;
+      // required int64 timestamp = 4;
+      private long timestamp_ ;
       public boolean hasTimestamp() {
         return ((bitField0_ & 0x00000008) == 0x00000008);
       }
-      public int getTimestamp() {
+      public long getTimestamp() {
         return timestamp_;
       }
-      public Builder setTimestamp(int value) {
+      public Builder setTimestamp(long value) {
         bitField0_ |= 0x00000008;
         timestamp_ = value;
         onChanged();
@@ -616,7 +616,7 @@ public final class Measure {
       }
       public Builder clearTimestamp() {
         bitField0_ = (bitField0_ & ~0x00000008);
-        timestamp_ = 0;
+        timestamp_ = 0L;
         onChanged();
         return this;
       }
@@ -649,7 +649,7 @@ public final class Measure {
       "\n\rmeasure.proto\022\013distmetrics\032\014common.pro" +
       "to\"p\n\013Measurement\022\022\n\nresourceId\030\001 \002(\t\022+\n" +
       "\nmetricType\030\002 \002(\0162\027.distmetrics.MetricTy" +
-      "pe\022\r\n\005value\030\003 \002(\t\022\021\n\ttimestamp\030\004 \002(\005B\'\n%" +
+      "pe\022\r\n\005value\030\003 \002(\t\022\021\n\ttimestamp\030\004 \002(\003B\'\n%" +
       "pl.project13.distmetrics.common.proto"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =

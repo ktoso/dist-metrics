@@ -17,7 +17,7 @@ type Measurement struct {
 	ResourceId       *string     `protobuf:"bytes,1,req,name=resourceId" json:"resourceId,omitempty"`
 	MetricType       *MetricType `protobuf:"varint,2,req,name=metricType,enum=distmetrics.MetricType" json:"metricType,omitempty"`
 	Value            *string     `protobuf:"bytes,3,req,name=value" json:"value,omitempty"`
-	Timestamp        *int32      `protobuf:"varint,4,req,name=timestamp" json:"timestamp,omitempty"`
+	Timestamp        *int64      `protobuf:"varint,4,req,name=timestamp" json:"timestamp,omitempty"`
 	XXX_unrecognized []byte      `json:"-"`
 }
 
@@ -46,7 +46,7 @@ func (this *Measurement) GetValue() string {
 	return ""
 }
 
-func (this *Measurement) GetTimestamp() int32 {
+func (this *Measurement) GetTimestamp() int64 {
 	if this != nil && this.Timestamp != nil {
 		return *this.Timestamp
 	}

@@ -8,5 +8,5 @@ message Measurement {
     required string     resourceId = 1;
     required MetricType metricType = 2;
     required string     value      = 3;
-    required int32      timestamp  = 4;
+    required int64      timestamp  = 4;
 }

@@ -37,31 +37,23 @@ func (this *SubscribeRequest) GetMetricType() MetricType {
 	return 0
 }
 
-type SubscriptionCreatedResponse struct {
-	Location         *string `protobuf:"bytes,1,req,name=location" json:"location,omitempty"`
-	XXX_unrecognized []byte  `json:"-"`
-}
-
-func (this *SubscriptionCreatedResponse) Reset()         { *this = SubscriptionCreatedResponse{} }
-func (this *SubscriptionCreatedResponse) String() string { return proto.CompactTextString(this) }
-func (*SubscriptionCreatedResponse) ProtoMessage()       {}
-
-func (this *SubscriptionCreatedResponse) GetLocation() string {
-	if this != nil && this.Location != nil {
-		return *this.Location
-	}
-	return ""
-}
-
 type SubscriptionResponse struct {
-	Host             *string `protobuf:"bytes,1,req,name=host" json:"host,omitempty"`
-	Port             *int32  `protobuf:"varint,2,req,name=port" json:"port,omitempty"`
+	SubscriptionId   *int64  `protobuf:"varint,1,req,name=subscriptionId" json:"subscriptionId,omitempty"`
+	Host             *string `protobuf:"bytes,2,req,name=host" json:"host,omitempty"`
+	Port             *int32  `protobuf:"varint,3,req,name=port" json:"port,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
 func (this *SubscriptionResponse) Reset()         { *this = SubscriptionResponse{} }
 func (this *SubscriptionResponse) String() string { return proto.CompactTextString(this) }
 func (*SubscriptionResponse) ProtoMessage()       {}
+
+func (this *SubscriptionResponse) GetSubscriptionId() int64 {
+	if this != nil && this.SubscriptionId != nil {
+		return *this.SubscriptionId
+	}
+	return 0
+}
 
 func (this *SubscriptionResponse) GetHost() string {
 	if this != nil && this.Host != nil {
