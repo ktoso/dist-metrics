@@ -13,12 +13,12 @@ import (
 	"github.com/kless/goconfig/config"
 )
 
-var c, _ = config.ReadDefault("sensor.conf")
+var c, _ = config.ReadDefault("config.conf")
 var sensorHost, _ = c.String("sensor", "host")
 var monitorHost, _ = c.String("monitor", "host")
 var monitorPort, _ = c.Int("monitor", "port")
 
-func reader(r io.Reader) {
+func Reader(r io.Reader) {
 	buf := make([]byte, 1024)
 
 	for {
@@ -31,18 +31,13 @@ func reader(r io.Reader) {
 	}
 }
 
-func main() {
-	log.Printf("Host name configured as: %q", sensorHost)
-	log.Printf("Monitor configured at:   %q:%d", monitorHost, monitorPort)
-
+func TestProtocolBuffers() {
 	test := &distmetrics.Measurement{
 		ResourceId: proto.String("moon"),
 		MetricType: distmetrics.MetricType_Cpu.Enum(),
 		Value:      proto.String("50"),
 		Timestamp:  proto.Int32(111),
 	}
-
-	// testing Protocol Buffers
 
 	data, err := proto.Marshal(test)
 	if err != nil {
@@ -59,8 +54,11 @@ func main() {
 	} else {
 		log.Printf("Unmarshalled protocol buffer message: the resource id is: %q", newTest.GetResourceId())
 	}
+}
 
-	// end of testing Protocol Buffers
+func main() {
+	log.Printf("Host name configured as: %q", sensorHost)
+	log.Printf("Monitor configured at:   %q:%d", monitorHost, monitorPort)
 
 	c, err := net.Dial("tcp", "google.com:80")
 
@@ -69,7 +67,7 @@ func main() {
 		return
 	}
 
-	go reader(c)
+	go Reader(c)
 	for {
 		_, err := c.Write([]byte("GET / HTTP/1.0\r\n\r\n"))
 		if err != nil {
