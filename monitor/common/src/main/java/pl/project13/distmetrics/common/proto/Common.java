@@ -4,6 +4,7 @@
 package pl.project13.distmetrics.common.proto;
 
 public final class Common {
+
   private Common() {}
   public static void registerAllExtensions(
       com.google.protobuf.ExtensionRegistry registry) {

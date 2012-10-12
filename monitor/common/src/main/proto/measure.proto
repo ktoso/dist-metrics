@@ -4,6 +4,9 @@ package distmetrics;
 
 import "common.proto";
 
+/**
+ * Fun fact, small metric in protobuf: 14B,
+ */
 message Measurement {
     required string     resourceId = 1;
     required MetricType metricType = 2;

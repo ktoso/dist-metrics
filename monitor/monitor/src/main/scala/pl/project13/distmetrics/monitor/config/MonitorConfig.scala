@@ -9,7 +9,7 @@ class MonitorConfig {
   val port = conf.getInt("port")
   def path(parts: String*) = host + ":" + port + "/" + parts.mkString("/")
 
-  val tcpPort = conf.getInt("tcp_port")
+  val sensorPort = conf.getInt("tcp_port")
 
 }
 

@@ -3,6 +3,8 @@ package main
 import (
 	"log"
 
+  "math/rand"
+	"fmt"
 	"io"
 	"net"
 	"time"
@@ -15,6 +17,8 @@ import (
 
 var c, _ = config.ReadDefault("config.conf")
 var sensorHost, _ = c.String("sensor", "host")
+var sensorDelayRaw, _ = c.String("sensor", "delay")
+var sensorDelay, _ = time.ParseDuration(sensorDelayRaw)
 var monitorHost, _ = c.String("monitor", "host")
 var monitorPort, _ = c.Int("monitor", "port")
 
@@ -31,55 +35,40 @@ func Reader(r io.Reader) {
 	}
 }
 
-func TestProtocolBuffers() {
-	test := &distmetrics.Measurement{
-		ResourceId: proto.String("moon"),
-		MetricType: distmetrics.MetricType_Cpu.Enum(),
-		Value:      proto.String("50"),
-		Timestamp:  proto.Int32(111),
-	}
-
-	data, err := proto.Marshal(test)
-	if err != nil {
-		log.Fatal("marshaling error: ", err)
-	}
-	newTest := &distmetrics.Measurement{}
-	err = proto.Unmarshal(data, newTest)
-	if err != nil {
-		log.Fatal("unmarshaling error: ", err)
-	}
-	// Now test and newTest contain the same data.
-	if test.GetResourceId() != newTest.GetResourceId() {
-		log.Fatalf("data mismatch %q != %q", test.GetResourceId(), newTest.GetResourceId())
-	} else {
-		log.Printf("Unmarshalled protocol buffer message: the resource id is: %q", newTest.GetResourceId())
-	}
-}
-
 func main() {
-	log.Printf("Host name configured as: %q", sensorHost)
-	log.Printf("Monitor configured at:   %q:%d", monitorHost, monitorPort)
+	log.Printf("Host name configured as: %s", sensorHost)
+	log.Printf("Monitor configured at:   %s:%d", monitorHost, monitorPort)
+	log.Printf("Will sleep %s between sending stats", sensorDelayRaw)
 
-  //  dial to local monitor
-  d, _ := net.Dial("tcp", "localhost:9900")
-  d.Write([]byte("GET / HTTP/1.0\r\n\r\n"))
-  d.Close()
-  // end of local dial
+	//  dial to local monitor
+	// go Reader(c)
 
-	c, err := net.Dial("tcp", "google.com:80")
-
-	if err != nil {
-		println("dial error", err.Error())
-		return
-	}
-
-	go Reader(c)
 	for {
-		_, err := c.Write([]byte("GET / HTTP/1.0\r\n\r\n"))
-		if err != nil {
-			println("unable to write!", err.Error())
-			break
+		metric := &distmetrics.Measurement{
+			ResourceId: proto.String(sensorHost),
+			MetricType: distmetrics.MetricType_Cpu.Enum(),
+			Value:      proto.String(fmt.Sprintf("%d", rand.Intn(101))),
+			Timestamp:  proto.Int64(time.Now().Unix()),
 		}
-		time.Sleep(1e9)
+	
+    c, err := net.Dial("tcp", fmt.Sprintf("%s:%d", monitorHost, monitorPort))
+		 
+    if err != nil {
+			println("dial error", err.Error())
+			return
+		}
+		data, _ := proto.Marshal(metric)
+		_, err = c.Write(data)
+
+		if err != nil {
+			println("write error", err.Error())
+			return
+		}
+
+    // c.SetKeepAlive(true)
+		c.Close()
+
+		time.Sleep(sensorDelay)
 	}
+
 }
