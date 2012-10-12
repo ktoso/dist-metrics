@@ -3,12 +3,16 @@ simple metrics system using:
 Server:
 * Scala
 * Akka
+* Spray.cc
 
 Sensor:
 * Go
 
 Client:
-* not dreviewecided yet
+* Python 2.7
+
+Other:
+* Google Protocol Buffers
 
 
 Requirements:
