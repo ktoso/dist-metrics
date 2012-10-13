@@ -12,4 +12,10 @@ trait JavaNioConversions {
   }
 
   implicit def num2InetSocketAddres(in: Int) = new InetSocketAddress(in)
+
+  implicit def block2runnable(block: => Unit) = new Runnable {
+    def run() {
+      block
+    }
+  }
 }

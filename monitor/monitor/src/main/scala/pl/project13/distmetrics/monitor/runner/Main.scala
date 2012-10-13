@@ -20,6 +20,11 @@ import akka.pattern._
 import akka.dispatch.Await
 import akka.util.{Timeout, Duration}
 import akka.util.duration._
+import java.util.concurrent._
+import com.google.common.util.concurrent.{ListenableFutureTask, SettableFuture, ThreadFactoryBuilder}
+import scala.collection._
+import pl.project13.distmetrics.monitor.actor.ChannelInformation
+import pl.project13.distmetrics.monitor.actor.DataReceived
 
 trait MonitorMain extends Logging
   with ChannelOperations {
@@ -35,9 +40,15 @@ trait MonitorMain extends Logging
 
   val openChannels = new AtomicInteger(0)
 
+  /**
+   * As channel registration has be on the thread the selectr was created on,
+   * we use this queue to create tasks for this thread. See also `registerNewChannels`.
+   */
+  val channelsToRegister = mutable.Queue[() => SelectionKey]()
+
   @tailrec final def loop() {
-    logger.info("Selecting...")
-    selector.select()
+    selector.select(1.second.toMillis)
+    registerNewChannels(channelsToRegister)
 
     val selKeysIterator = selector.selectedKeys.iterator
     selKeysIterator foreach { key =>
@@ -45,19 +56,6 @@ trait MonitorMain extends Logging
         selKeysIterator.remove()
 
         selectionRouterActor ! key
-        Thread.sleep(10)
-
-//        if (!key.isValid) {
-//          // ignore
-//        } else if (key.isAcceptable) {
-//          accept(selector, key)
-//        } else if (key.isReadable) {
-//          read(key)
-//        } else if (key.isWritable) {
-//          write(key)
-//        } else {
-//          throw new RuntimeException("Not implemented yet!") // TODO implement me
-//        }
       } catch {
         case ex: Exception =>
           key.cancel()
@@ -68,9 +66,42 @@ trait MonitorMain extends Logging
     loop()
   }
 
-  /** @return (opened port was this? the subscription id, which port was opened) */
+  @tailrec
+  final def registerNewChannels(toRegister: mutable.Queue[() => SelectionKey]): Unit =
+    toRegister.dequeueFirst(_ => true) match {
+      case Some(register) =>
+        register()
+        registerNewChannels(toRegister)
+
+      case None => ()
+    }
+
+  def registerForAccept(channel: ServerSocketChannel): SelectionKey = {
+    logger.info("Will eneueue socket chanell to be registered...")
+    val selectionKeyFuture = SettableFuture.create[SelectionKey]
+
+    // enqueue to be processed on the servers selector thread (see NIO docs for channel register)
+    channelsToRegister enqueue { () =>
+      val selectionKey = channel.register(selector, SelectionKey.OP_ACCEPT)
+      logger.info("Registered new socket channel with selector")
+
+      selectionKeyFuture.set(selectionKey)
+      selectionKey
+    }
+
+    selectionKeyFuture.get(30.seconds.toMillis, TimeUnit.MILLISECONDS)
+  }
+
+  /**
+   * Important NIO note: Registration of a new channel must be done from the same thread that has created the selector.
+   * This method takes care of this.
+   *
+   * Requires server `loop` to be running.
+   *
+   * @return (opened port was this? the subscription id, which port was opened)
+   */
   def openNewChannel() = {
-    val openChan = openChannels.getAndIncrement()
+    val openChan = openChannels.incrementAndGet()
     val portToUse = config.sensorPort + openChan
 
     logger.info("Opening channel in [%s]...".format(portToUse))
@@ -78,10 +109,11 @@ trait MonitorMain extends Logging
     serverSocketChannel.configureBlocking(false)
     serverSocketChannel.socket().bind(portToUse)
 
-    val selectionKey = serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT)
+//    val selectionKey = serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT)
+    val selectionKey = registerForAccept(serverSocketChannel)
 
     logger.info("Opened new channel on [%s]. Already [%s] channels open".format(portToUse, openChannels.get))
-    ChannelInformation(openChan - 1, selectionKey)
+    ChannelInformation(openChan, selectionKey)
   }
 }
 
@@ -143,9 +175,8 @@ object Main extends App with MonitorMain with MonitorActorSystem {
 
   sprayCanServer ! HttpServer.Bind(config.host, config.port)
 
-  openNewChannel()
-
   loop()
+  openNewChannel()
 
   override def handleReadData(socketChannel: SocketChannel, data: Array[Byte], bytes: Long) {
     sensorMeasurementActor ! DataReceived(socketChannel, data.take(bytes.toInt))

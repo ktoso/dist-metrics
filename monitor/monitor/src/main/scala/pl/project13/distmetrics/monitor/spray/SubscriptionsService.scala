@@ -33,6 +33,8 @@ trait SubscriptionsService extends Directives with Logging
     pathPrefix(Subscriptions) {
       post {
         content(as[Subscribe.SubscribeRequest]) { request =>
+//          logger.info("Got subscribe request from [%s] to [%s / %s] ".format(context.remoteHost, request.getResourceId, request.getMetricType))
+
           val futurePort = subscriptionHandler ? request
           val port = Await.result(futurePort, atMost).asInstanceOf[Int]
 
