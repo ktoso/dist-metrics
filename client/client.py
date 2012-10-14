@@ -116,7 +116,7 @@ def main():
 #    register(resourceId, metricKey)
 
 #   auto registration
-    register("moon", "memfree")
+    register("moon", "cpu")
 
 if __name__ == '__main__':
     main()

@@ -3,9 +3,9 @@ package main
 import (
 	"log"
 
-  "math/rand"
 	"fmt"
 	"io"
+	"math/rand"
 	"net"
 	"time"
 
@@ -50,10 +50,10 @@ func main() {
 			Value:      proto.String(fmt.Sprintf("%d", rand.Intn(101))),
 			Timestamp:  proto.Int64(time.Now().Unix()),
 		}
-	
-    c, err := net.Dial("tcp", fmt.Sprintf("%s:%d", monitorHost, monitorPort))
-		 
-    if err != nil {
+
+		c, err := net.Dial("tcp", fmt.Sprintf("%s:%d", monitorHost, monitorPort))
+
+		if err != nil {
 			println("dial error", err.Error())
 			return
 		}
@@ -65,7 +65,7 @@ func main() {
 			return
 		}
 
-    // c.SetKeepAlive(true)
+		// c.SetKeepAlive(true)
 		c.Close()
 
 		time.Sleep(sensorDelay)

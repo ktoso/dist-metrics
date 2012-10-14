@@ -17,17 +17,17 @@ class SelectionRouterActor(metricHandlerActor: ActorRef, subscriptionHandlerActo
       this.selector = Some(s)
 
     case selectionKey: SelectionKey if selectionKey.isValid && selectionKey.isWritable =>
-      logger.debug("Write to selectionKey...")
+      logger.trace("Write to selectionKey...")
       selectionKey.cancel()
 
     case selectionKey: SelectionKey if selectionKey.isValid &&selectionKey.isReadable =>
       read(selectionKey)
-      logger.debug("Read from selectionKey...")
+      logger.trace("Read from selectionKey...")
 
     case selectionKey: SelectionKey if selectionKey.isValid && selectionKey.isAcceptable =>
       selector map { sel =>
         accept(sel, selectionKey)
-        logger.debug("Accepted selectionKey...")
+        logger.trace("Accepted selectionKey...")
       }
       sender ! "OK"
 

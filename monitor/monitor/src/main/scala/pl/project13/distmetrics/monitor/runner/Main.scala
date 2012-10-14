@@ -9,7 +9,7 @@ import annotation.tailrec
 import java.util.concurrent.atomic.AtomicInteger
 import pl.project13.distmetrics.monitor.channel.ChannelOperations
 import java.io.IOException
-import akka.actor.{ActorRef, Props, ActorSystem}
+import akka.actor.{Actor, ActorRef, Props, ActorSystem}
 import pl.project13.distmetrics.monitor.actor._
 import pl.project13.distmetrics.monitor.spray.{MonitorServicesModule, SubscriptionsService}
 import cc.spray.{SprayCanRootService, RootService, HttpService}
@@ -38,7 +38,7 @@ trait MonitorMain extends Logging
   implicit val atMost = 30.seconds
   implicit val timeout = Timeout(atMost)
 
-  val openChannels = new AtomicInteger(0)
+  val registeredChannels = new AtomicInteger(0)
 
   /**
    * As channel registration has be on the thread the selectr was created on,
@@ -67,7 +67,7 @@ trait MonitorMain extends Logging
   }
 
   @tailrec
-  final def registerNewChannels(toRegister: mutable.Queue[() => SelectionKey]): Unit =
+  final def registerNewChannels(toRegister: mutable.Queue[() => SelectionKey]): Unit = {
     toRegister.dequeueFirst(_ => true) match {
       case Some(register) =>
         register()
@@ -75,8 +75,9 @@ trait MonitorMain extends Logging
 
       case None => ()
     }
+  }
 
-  def registerForAccept(channel: ServerSocketChannel): SelectionKey = {
+  def registerForAccept(channel: ServerSocketChannel, blocking: Boolean = true): SelectionKey = {
     logger.info("Will eneueue socket chanell to be registered...")
     val selectionKeyFuture = SettableFuture.create[SelectionKey]
 
@@ -89,7 +90,10 @@ trait MonitorMain extends Logging
       selectionKey
     }
 
-    selectionKeyFuture.get(30.seconds.toMillis, TimeUnit.MILLISECONDS)
+    if (blocking)
+      selectionKeyFuture.get(30.seconds.toMillis, TimeUnit.MILLISECONDS)
+    else
+      null
   }
 
   /**
@@ -100,8 +104,8 @@ trait MonitorMain extends Logging
    *
    * @return (opened port was this? the subscription id, which port was opened)
    */
-  def openNewChannel() = {
-    val openChan = openChannels.incrementAndGet()
+  def openNewChannel(blocking: Boolean = true) = {
+    val openChan = registeredChannels.getAndIncrement()
     val portToUse = config.sensorPort + openChan
 
     logger.info("Opening channel in [%s]...".format(portToUse))
@@ -110,9 +114,9 @@ trait MonitorMain extends Logging
     serverSocketChannel.socket().bind(portToUse)
 
 //    val selectionKey = serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT)
-    val selectionKey = registerForAccept(serverSocketChannel)
+    val selectionKey = registerForAccept(serverSocketChannel, blocking)
 
-    logger.info("Opened new channel on [%s]. Already [%s] channels open".format(portToUse, openChannels.get))
+    logger.info("Opened new channel on [%s]. Already [%s] channels open".format(portToUse, registeredChannels.get))
     ChannelInformation(openChan, selectionKey)
   }
 }
@@ -125,8 +129,8 @@ trait MonitorActorSystem extends Logging {
   val system = ActorSystem("monitor-system")
 
   logger.info("Starting handler actors ...")
-  val sensorMeasurementActor = system.actorOf(Props[SensorMeasurementReceiverActor], name = "measurement-handler")
   val subscriptionActor = system.actorOf(Props(new ClientSubscriptionActor(this, config)), name = "subscription-handler")
+  val sensorMeasurementActor = system.actorOf(Props(new SensorMeasurementReceiverActor(subscriptionActor)), name = "measurement-handler")
   val selectionRouterActor = system.actorOf(Props( new SelectionRouterActor(sensorMeasurementActor, subscriptionActor)), name = "selection-handler")
 
 
@@ -175,8 +179,8 @@ object Main extends App with MonitorMain with MonitorActorSystem {
 
   sprayCanServer ! HttpServer.Bind(config.host, config.port)
 
+  openNewChannel(blocking = false)
   loop()
-  openNewChannel()
 
   override def handleReadData(socketChannel: SocketChannel, data: Array[Byte], bytes: Long) {
     sensorMeasurementActor ! DataReceived(socketChannel, data.take(bytes.toInt))

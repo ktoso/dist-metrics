@@ -25,6 +25,9 @@ class ClientSubscriptionActor(monitor: MonitorMain, config: MonitorConfig) exten
   private val subscriptionIdToSelKey = new ConcurrentHashMap[SubscriptionId, SelectionKey]()
 
   protected def receive = {
+    case RegisterSensorChannel =>
+      openSocketForSensor()
+
     case request: SubscribeRequest =>
       val resourceId = request.getResourceId
       val metricType = request.getMetricType
@@ -50,9 +53,13 @@ class ClientSubscriptionActor(monitor: MonitorMain, config: MonitorConfig) exten
 
       sender ! SubscriptionResponse(subscriptionId, config.host, localPort)
 
-    case PushMeasurement(measurement) =>
-      val selectionKey = findSelectionKeyFor(measurement)
-      writeToChannel(measurement.toByteArray, selectionKey)
+    case SubscriptionChannelsToPublish(measurement) =>
+      logger.info("Identify selectionKey for measurement [%s-%s], and request PushMeasurement".format(measurement.getResourceId, measurement.getMetricType))
+      findSelectionKeyFor(measurement) match {
+        case Some(selectionKey) => sender ! PushMeasurement(measurement, selectionKey)
+        case None => logger.debug("No one is listening for [%s-%s]".format(measurement.getResourceId, measurement.getMetricType))
+      }
+
 
     case SubscriptionDelete(subscriptionId) =>
 //      closeSubscription()
@@ -64,18 +71,22 @@ class ClientSubscriptionActor(monitor: MonitorMain, config: MonitorConfig) exten
     monitor.openNewChannel()
   }
 
+  def openSocketForSensor() = {
+    monitor.openNewChannel()
+  }
+
   def key(resourceId: String, metricType: MetricType) = resourceId + "-" + metricType.getNumber
 
-  def findSelectionKeyFor(measurement: Measurement): SelectionKey = {
+  def findSelectionKeyFor(measurement: Measurement): Option[SelectionKey] = {
     val subscriptionId = findSubscriptionIdIdFor(measurement)
-    findSelectionKeyFor(subscriptionId)
+    subscriptionId map { findSelectionKeyFor(_) }
   }
 
   def findSelectionKeyFor(subscriptionId: SubscriptionId): SelectionKey =
     subscriptionIdToSelKey(subscriptionId)
 
-  def findSubscriptionIdIdFor(measurement: Measurement): SubscriptionId =
-    findSubscribersOf(measurement.getResourceId, measurement.getMetricType).map(_._2).get
+  def findSubscriptionIdIdFor(measurement: Measurement): Option[SubscriptionId] =
+    findSubscribersOf(measurement.getResourceId, measurement.getMetricType).map(_._2)
 
   def findSubscribersOf(theResourceId: String, theMetricType: MetricType) =
     topicToSubscriptionId find { case ((resourceId, metricType), subscriptionId) =>

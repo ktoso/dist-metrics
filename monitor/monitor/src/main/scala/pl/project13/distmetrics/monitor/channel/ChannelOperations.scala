@@ -79,11 +79,7 @@ trait ChannelReadOperation extends JavaNioConversions with Logging {
 
 trait ChannelWriteOperation extends JavaNioConversions with Logging {
 
-  def write(key: SelectionKey) {
-    // todo implement me?
-  }
-
-  def writeToChannel(content: Array[Byte], key: SelectionKey) {
+  def write(content: Array[Byte], key: SelectionKey) {
     val bytesCount = content.size
     if (key.isValid && key.isWritable) {
       val channel = key.socketChannel
@@ -103,13 +99,18 @@ trait ChannelAcceptOperation extends JavaNioConversions with Logging {
       val serverSocketChannel = key.serverSocketChannel
 
       // Accept the connection and make it non-blocking
-      val socketChannel = serverSocketChannel.accept()
-      val socket = socketChannel.socket()
-      socketChannel.configureBlocking(false)
+      serverSocketChannel.accept() match {
+        case null =>
+          // already non-blocking and configured
 
-      // Register the new SocketChannel with our Selector, indicating
-      // we'd like to be notified when there's data waiting to be read
-      socketChannel.register(selector, SelectionKey.OP_READ)
+        case socketChannel =>
+          val socket = socketChannel.socket()
+          socketChannel.configureBlocking(false)
+
+          // Register the new SocketChannel with our Selector, indicating
+          // we'd like to be notified when there's data waiting to be read
+          socketChannel.register(selector, SelectionKey.OP_READ)
+      }
     }
 }
 
