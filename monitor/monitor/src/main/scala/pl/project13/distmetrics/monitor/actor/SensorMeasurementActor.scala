@@ -5,7 +5,7 @@ import com.weiglewilczek.slf4s.Logging
 import pl.project13.distmetrics.common.proto.ProtoConversions
 import pl.project13.distmetrics.monitor.channel.ChannelWriteOperation
 
-class SensorMeasurementReceiverActor(subscriptionActor: ActorRef) extends Actor with ProtoConversions with Logging
+class SensorMeasurementActor(subscriptionActor: ActorRef) extends Actor with ProtoConversions with Logging
   with ChannelWriteOperation {
 
   protected def receive = {

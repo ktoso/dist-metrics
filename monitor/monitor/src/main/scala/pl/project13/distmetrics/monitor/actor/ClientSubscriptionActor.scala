@@ -40,10 +40,10 @@ class ClientSubscriptionActor(monitor: MonitorMain, config: MonitorConfig) exten
           topicToSubscriptionId((resourceId, metricType)) = subscriptionId
           subscriptionIdToSelKey(subscriptionId) = selKey
 
-          sender ! subscriptionId
+          sender ! SubscriptionCreatedOrFound(subscriptionId, isFreshResource = true)
 
         case Some((_, subscriptionId)) => // answer with cached subscription Id
-          sender ! subscriptionId
+          sender ! SubscriptionCreatedOrFound(subscriptionId, isFreshResource = false)
       }
 
     case SubscriptionDetailsFor(subscriptionId) =>

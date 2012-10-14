@@ -10,6 +10,8 @@ package object actor {
 
   case object RegisterSensorChannel
 
+  case class SubscriptionCreatedOrFound(subscriptionId: Int, isFreshResource: Boolean)
+
   case class DataReceived(channel: SocketChannel, data: Array[Byte])
 
   case class PushMeasurement(measurement: Measure.Measurement, selectionKey: SelectionKey)

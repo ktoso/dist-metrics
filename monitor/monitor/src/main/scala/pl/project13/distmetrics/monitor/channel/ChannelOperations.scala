@@ -87,6 +87,8 @@ trait ChannelWriteOperation extends JavaNioConversions with Logging {
 
       if (wrote /== bytesCount)
         throw new Exception("Wasn't able to write all bytes to channel! [%s] to write, but wrote [%s]".format(bytesCount, wrote))
+    } else {
+      throw new Exception("Channel was not writeable!")
     }
   }
 

@@ -15,7 +15,7 @@ import akka.util.duration._
 import akka.util.Timeout
 import cc.spray.http.{HttpHeaders, StatusCodes, StatusCode}
 import akka.pattern._
-import pl.project13.distmetrics.monitor.actor.{SubscriptionDetailsFor, SubscriptionDelete}
+import pl.project13.distmetrics.monitor.actor.{SubscriptionCreatedOrFound, SubscriptionDetailsFor, SubscriptionDelete}
 
 trait SubscriptionsService extends Directives with Logging
   with ProtoMarshalling {
@@ -52,10 +52,14 @@ trait SubscriptionsService extends Directives with Logging
   }
 
 
-  def handleDeleteSubscription(subscriptionId: Int) {
+  /** 202 - because we submit to the actor, without blocking */
+  def handleDeleteSubscription(subscriptionId: Int): (RequestContext) => Unit = {
     subscriptionHandler ! SubscriptionDelete(subscriptionId)
+
+    _.complete(StatusCodes.Accepted, "")
   }
 
+  /** 200 - because we're blocking to obtain the port from an actor */
   def handleObtainPort(subscriptionId: Int): (RequestContext) => Unit = {
     val futureResponse = subscriptionHandler ? SubscriptionDetailsFor(subscriptionId)
     val response = Await.result(futureResponse, atMost).asInstanceOf[Subscribe.SubscriptionResponse]
@@ -63,11 +67,20 @@ trait SubscriptionsService extends Directives with Logging
     _.complete(StatusCodes.OK, response.toByteArray)
   }
 
+  /**  */
   def handleRegistration(request: Subscribe.SubscribeRequest): (RequestContext) => Unit = {
     val futurePort = subscriptionHandler ? request
-    val port = Await.result(futurePort, atMost).asInstanceOf[Int]
+    val createdOrFound = Await.result(futurePort, atMost).asInstanceOf[SubscriptionCreatedOrFound]
 
-    _.complete(StatusCodes.Created, HttpHeaders.Location("localhost:8080/" + Subscriptions + "/" + port) :: Nil, "")
+    createdOrFound.isFreshResource match {
+      case true  =>
+        _.complete(StatusCodes.Created, HttpHeaders.Location(subscriptionResourceUri(createdOrFound.subscriptionId)) :: Nil, "")
+      case false =>
+        _.complete(StatusCodes.MovedPermanently, HttpHeaders.Location("localhost:8080/" + Subscriptions + "/" + createdOrFound.subscriptionId) :: Nil, "")
+    }
   }
+
+  def subscriptionResourceUri(id: Int) =
+    config.host + ":" + config.port + "/" + List(Subscriptions, id).mkString("/")
 
 }
