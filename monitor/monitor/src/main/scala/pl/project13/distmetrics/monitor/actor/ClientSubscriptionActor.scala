@@ -42,6 +42,9 @@ class ClientSubscriptionActor(monitor: MonitorMain) extends Actor with ProtoConv
           sender ! subscriptionId
       }
 
+    case SubscriptionDetailsFor(subscriptionId) =>
+
+
     case PushMeasurement(measurement) =>
       val selectionKey = findSelectionKeyFor(measurement)
       writeToChannel(measurement.toByteArray, selectionKey)

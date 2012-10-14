@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 
-import socket
-import httplib, urllib
+import httplib
 
 import pb.common_pb2 as MetricType
-from pb.subscribe_pb2 import SubscribeRequest, SubscriptionResponse
+from pb.subscribe_pb2 import SubscribeRequest
 
 
 MONITOR_HOST = "127.0.0.1"
@@ -16,27 +15,62 @@ TCP_PORT = 4444
 BUFFER_SIZE = 1024
 MESSAGE = "Hello, World!"
 
+# http, duh
+GET = "GET"
+POST = "POST"
+DELETE = "DELETE"
+
+def request_subscription_resource_location(resource_id, metric_key):
+    conn = httplib.HTTPConnection(MONITOR_HTTP_URL)
+
+    rq = SubscribeRequest()
+    rq.resourceId = resource_id
+    rq.metricType = metric_key_as_enum(metric_key)
+
+    conn.request(POST, "/subscriptions", rq.SerializeToString())
+
+    response = conn.getresponse()
+    resource_uri = response.getheader("Location")
+    print "response status: ", response.status, response.reason
+    print "response Location: ", resource_uri
+    conn.close()
+
+    return resource_uri
+
+def get_registration_port(resource_uri):
+    print "requesting: ", resource_uri
+    host_port, path = resource_uri.split('/', 1)
+    conn = httplib.HTTPConnection(host_port)
+
+    conn.request(GET, "/" + path)
+    response = conn.getresponse()
+    print "response status:", response.status, response.reason
+    print "response body: ", response.read()
+
+    conn.close()
+    return
+
 # register
-def register(resourceId, metricType):
-  conn = httplib.HTTPConnection(MONITOR_HTTP_URL)
+def register(resource_id, metric_key):
+    resource_uri = request_subscription_resource_location(resource_id, metric_key)
 
-  rq = SubscribeRequest()
-  rq.resourceId = resourceId
-  if metricType == "cpu":
-    rq.metricType = MetricType.Cpu
-  elif metricType == "memfree":
-    rq.metricType = MetricType.MemFree
-  
-  conn.request("POST", "/subscriptions", rq.SerializeToString())
+    get_registration_port(resource_uri)
 
-  response = conn.getresponse()
-  print response.status, response.reason
-  data = response.read()
-  print data
-  rs = SubscriptionResponse()
-  rs.ParseFromString(data)
-  data.close()
+    # get response proto
 
+#  rs = SubscriptionResponse()
+#  rs.ParseFromString(data)
+#  print ""
+
+def metric_key_as_enum(key):
+    if key == "cpu":
+        return MetricType.Cpu
+    elif key == "memfree":
+        return MetricType.MemFree
+    elif key == "memused":
+        return MetricType.MemUsed
+    else:
+        raise NameError("Invalid metric key! Valid: cpu, memfree, memused")
 
 
 #s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -48,9 +82,11 @@ def register(resourceId, metricType):
 #print "received data:", data
 
 def main():
-  print "Welcome to dist-metrics client!"
-  # register(raw_input("Register to host's messages: "))
-  register("moon", "memfree")
+    print "Welcome to dist-metrics client!"
+#    resourceId = raw_input("Register to host's messages: ")
+#    metricKey = raw_input("What metric? [cpu, memfree, memused]")
+#    register(resourceId, metricKey)
+    register("moon", "memfree")
 
 if __name__ == '__main__':
-  main()
+    main()

@@ -15,7 +15,7 @@ import akka.util.duration._
 import akka.util.Timeout
 import cc.spray.http.{HttpHeaders, StatusCodes, StatusCode}
 import akka.pattern._
-import pl.project13.distmetrics.monitor.actor.SubscriptionDelete
+import pl.project13.distmetrics.monitor.actor.{SubscriptionDetailsFor, SubscriptionDelete}
 
 trait SubscriptionsService extends Directives with Logging
   with ProtoMarshalling {
@@ -33,8 +33,6 @@ trait SubscriptionsService extends Directives with Logging
     pathPrefix(Subscriptions) {
       post {
         content(as[Subscribe.SubscribeRequest]) { request =>
-//          logger.info("Got subscribe request from [%s] to [%s / %s] ".format(context.remoteHost, request.getResourceId, request.getMetricType))
-
           val futurePort = subscriptionHandler ? request
           val port = Await.result(futurePort, atMost).asInstanceOf[Int]
 
@@ -43,7 +41,9 @@ trait SubscriptionsService extends Directives with Logging
       } ~
       path(LongNumber) { subscriptionId =>
         get {
-          _.complete("got GET!")
+
+          val futureResponse = subscriptionHandler ? SubscriptionDetailsFor(subscriptionId)
+          val response = Await.result()
         } ~
         delete { context =>
           subscriptionHandler ! SubscriptionDelete(subscriptionId)
