@@ -3,7 +3,7 @@
 import httplib
 
 import pb.common_pb2 as MetricType
-from pb.subscribe_pb2 import SubscribeRequest
+from pb.subscribe_pb2 import SubscribeRequest, SubscriptionResponse
 
 
 MONITOR_HOST = "127.0.0.1"
@@ -21,11 +21,16 @@ POST = "POST"
 DELETE = "DELETE"
 
 def request_subscription_resource_location(resource_id, metric_key):
+    print
+    print "requesting:", POST, MONITOR_HTTP_URL, "/subscriptions"
     conn = httplib.HTTPConnection(MONITOR_HTTP_URL)
 
     rq = SubscribeRequest()
     rq.resourceId = resource_id
     rq.metricType = metric_key_as_enum(metric_key)
+
+    print "sending proto request: "
+    print rq
 
     conn.request(POST, "/subscriptions", rq.SerializeToString())
 
@@ -38,14 +43,21 @@ def request_subscription_resource_location(resource_id, metric_key):
     return resource_uri
 
 def get_registration_port(resource_uri):
-    print "requesting: ", resource_uri
+    print
+    print "requesting:", POST, resource_uri
     host_port, path = resource_uri.split('/', 1)
     conn = httplib.HTTPConnection(host_port)
 
     conn.request(GET, "/" + path)
     response = conn.getresponse()
+    data = response.read()
     print "response status:", response.status, response.reason
-    print "response body: ", response.read()
+
+    rq = SubscriptionResponse()
+    rq.ParseFromString(data)
+
+    print "parsed proto response: "
+    print rq
 
     conn.close()
     return
@@ -84,7 +96,7 @@ def metric_key_as_enum(key):
 def main():
     print "Welcome to dist-metrics client!"
 #    resourceId = raw_input("Register to host's messages: ")
-#    metricKey = raw_input("What metric? [cpu, memfree, memused]")
+#    metricKey = raw_input("What metric? [cpu, memfree, memused]: ")
 #    register(resourceId, metricKey)
     register("moon", "memfree")
 

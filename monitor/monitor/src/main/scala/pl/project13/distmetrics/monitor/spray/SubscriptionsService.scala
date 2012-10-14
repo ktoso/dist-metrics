@@ -6,7 +6,7 @@ import cc.spray.http.HttpHeaders._
 import marshal.ProtoMarshalling
 import pl.project13.distmetrics.monitor.config.MonitorConfig
 import com.weiglewilczek.slf4s.Logging
-import cc.spray.directives.LongNumber
+import cc.spray.directives.{IntNumber, LongNumber}
 import pl.project13.distmetrics.common.proto.Subscribe
 import akka.actor.ActorRef
 import cc.spray.can.model.HttpResponse
@@ -33,26 +33,41 @@ trait SubscriptionsService extends Directives with Logging
     pathPrefix(Subscriptions) {
       post {
         content(as[Subscribe.SubscribeRequest]) { request =>
-          val futurePort = subscriptionHandler ? request
-          val port = Await.result(futurePort, atMost).asInstanceOf[Int]
-
-          _.complete(StatusCodes.Created, HttpHeaders.Location("localhost:8080/" + Subscriptions + "/" + port) :: Nil, "")
+          detach {
+            handleRegistration(request)
+          }
         }
       } ~
-      path(LongNumber) { subscriptionId =>
+      path(IntNumber) { subscriptionId =>
         get {
-
-          val futureResponse = subscriptionHandler ? SubscriptionDetailsFor(subscriptionId)
-          val response = Await.result()
+          detach {
+            handleObtainPort(subscriptionId)
+          }
         } ~
         delete { context =>
-          subscriptionHandler ! SubscriptionDelete(subscriptionId)
+          handleDeleteSubscription(subscriptionId)
         }
       }
     }
   }
 
-  def handleRegistration(context: RequestContext) = {
 
+  def handleDeleteSubscription(subscriptionId: Int) {
+    subscriptionHandler ! SubscriptionDelete(subscriptionId)
   }
+
+  def handleObtainPort(subscriptionId: Int): (RequestContext) => Unit = {
+    val futureResponse = subscriptionHandler ? SubscriptionDetailsFor(subscriptionId)
+    val response = Await.result(futureResponse, atMost).asInstanceOf[Subscribe.SubscriptionResponse]
+
+    _.complete(StatusCodes.OK, response.toByteArray)
+  }
+
+  def handleRegistration(request: Subscribe.SubscribeRequest): (RequestContext) => Unit = {
+    val futurePort = subscriptionHandler ? request
+    val port = Await.result(futurePort, atMost).asInstanceOf[Int]
+
+    _.complete(StatusCodes.Created, HttpHeaders.Location("localhost:8080/" + Subscriptions + "/" + port) :: Nil, "")
+  }
+
 }

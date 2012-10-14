@@ -11,9 +11,9 @@ package object actor {
 
   case class PushMeasurement(measurement: Measurement)
 
-  case class SubscriptionDetailsFor(subscriptionId: Long)
+  case class SubscriptionDetailsFor(subscriptionId: Int)
 
-  case class SubscriptionDelete(subscriptionId: Long)
+  case class SubscriptionDelete(subscriptionId: Int)
 
   // channels
   case class ChannelInformation(nth: Int, selectionKey: SelectionKey)

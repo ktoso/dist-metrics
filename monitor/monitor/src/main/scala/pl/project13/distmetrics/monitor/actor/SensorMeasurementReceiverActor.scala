@@ -1,11 +1,8 @@
 package pl.project13.distmetrics.monitor.actor
 
 import akka.actor.Actor
-import pl.project13.distmetrics.common.proto
-import java.nio.channels.SocketChannel
-import proto.{Measurement, SubscribeRequest, ProtoConversions}
 import com.weiglewilczek.slf4s.Logging
-import pl.project13.distmetrics.monitor.channel.{ChannelReadOperation, ChannelOperations}
+import pl.project13.distmetrics.common.proto.ProtoConversions
 
 class SensorMeasurementReceiverActor extends Actor with ProtoConversions with Logging {
 

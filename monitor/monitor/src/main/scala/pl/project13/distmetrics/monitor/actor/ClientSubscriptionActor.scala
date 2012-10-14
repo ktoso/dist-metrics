@@ -5,13 +5,13 @@ import pl.project13.distmetrics.common.proto
 import proto.Common.MetricType
 import proto.Measure.Measurement
 import proto.Subscribe.SubscribeRequest
-import proto.ProtoConversions
+import proto.{ProtoConversions}
 import com.weiglewilczek.slf4s.Logging
 import java.util.concurrent.ConcurrentHashMap
 import collection.JavaConversions._
 import pl.project13.distmetrics.monitor.runner.MonitorMain
 import pl.project13.distmetrics.monitor.channel.ChannelWriteOperation
-import java.nio.channels.SelectionKey
+import java.nio.channels.{ServerSocketChannel, SocketChannel, SelectionKey}
 
 class ClientSubscriptionActor(monitor: MonitorMain) extends Actor with ProtoConversions with Logging
   with ChannelWriteOperation {
@@ -38,12 +38,17 @@ class ClientSubscriptionActor(monitor: MonitorMain) extends Actor with ProtoConv
 
           sender ! subscriptionId
 
-        case Some((_, subscriptionId)) => // answer with subscription Id
+        case Some((_, subscriptionId)) => // answer with cached subscription Id
           sender ! subscriptionId
       }
 
     case SubscriptionDetailsFor(subscriptionId) =>
+      val selKey = subscriptionIdToSelKey(subscriptionId)
+      val localPort = selKey.channel().asInstanceOf[ServerSocketChannel].socket().getLocalPort
+      logger.info("Routing subscriptionId [%s] to port [%s]".format(subscriptionId, localPort))
 
+      val host = "localhost"
+      sender ! SubscriptionResponse(subscriptionId, host, localPort)
 
     case PushMeasurement(measurement) =>
       val selectionKey = findSelectionKeyFor(measurement)
