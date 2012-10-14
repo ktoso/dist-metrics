@@ -126,7 +126,7 @@ trait MonitorActorSystem extends Logging {
 
   logger.info("Starting handler actors ...")
   val sensorMeasurementActor = system.actorOf(Props[SensorMeasurementReceiverActor], name = "measurement-handler")
-  val subscriptionActor = system.actorOf(Props(new ClientSubscriptionActor(this)), name = "subscription-handler")
+  val subscriptionActor = system.actorOf(Props(new ClientSubscriptionActor(this, config)), name = "subscription-handler")
   val selectionRouterActor = system.actorOf(Props( new SelectionRouterActor(sensorMeasurementActor, subscriptionActor)), name = "selection-handler")
 
 
@@ -169,7 +169,7 @@ trait MonitorActorSystem extends Logging {
 
 object Main extends App with MonitorMain with MonitorActorSystem {
 
-  val config = MonitorConfig
+  lazy val config = MonitorConfig
 
   selectionRouterActor ! selector
 

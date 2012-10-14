@@ -17,7 +17,6 @@ class SelectionRouterActor(metricHandlerActor: ActorRef, subscriptionHandlerActo
       this.selector = Some(s)
 
     case selectionKey: SelectionKey if selectionKey.isValid && selectionKey.isWritable =>
-//      read(selectionKey)
       logger.debug("Write to selectionKey...")
       selectionKey.cancel()
 

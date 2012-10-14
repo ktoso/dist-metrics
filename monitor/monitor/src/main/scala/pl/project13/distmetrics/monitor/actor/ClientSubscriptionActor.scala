@@ -12,8 +12,9 @@ import collection.JavaConversions._
 import pl.project13.distmetrics.monitor.runner.MonitorMain
 import pl.project13.distmetrics.monitor.channel.ChannelWriteOperation
 import java.nio.channels.{ServerSocketChannel, SocketChannel, SelectionKey}
+import pl.project13.distmetrics.monitor.config.MonitorConfig
 
-class ClientSubscriptionActor(monitor: MonitorMain) extends Actor with ProtoConversions with Logging
+class ClientSubscriptionActor(monitor: MonitorMain, config: MonitorConfig) extends Actor with ProtoConversions with Logging
   with ChannelWriteOperation {
 
   type ResourceId = String
@@ -47,8 +48,7 @@ class ClientSubscriptionActor(monitor: MonitorMain) extends Actor with ProtoConv
       val localPort = selKey.channel().asInstanceOf[ServerSocketChannel].socket().getLocalPort
       logger.info("Routing subscriptionId [%s] to port [%s]".format(subscriptionId, localPort))
 
-      val host = "localhost"
-      sender ! SubscriptionResponse(subscriptionId, host, localPort)
+      sender ! SubscriptionResponse(subscriptionId, config.host, localPort)
 
     case PushMeasurement(measurement) =>
       val selectionKey = findSelectionKeyFor(measurement)

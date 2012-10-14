@@ -3,6 +3,7 @@
 import httplib
 
 import pb.common_pb2 as MetricType
+from pb.measure_pb2 import Measurement
 from pb.subscribe_pb2 import SubscribeRequest, SubscriptionResponse
 
 
@@ -60,19 +61,29 @@ def get_registration_port(resource_uri):
     print rq
 
     conn.close()
-    return
+    return rq
 
-# register
+def subscribe_for_measurements(host, port):
+    raise BaseException("Implement me. \
+Should subscribe on a TCP connection on the given port, read it in a loop, \
+and print each proto recieved. The proto is [Measurement]")
+#    open tcp connection
+#    on each message do:
+#      m = Measurement()
+#      m.ParseFromString(data_from_tcp)
+#      print me...
+#   todo figure out a way to not block the main thread, so you can "press enter to quit"
+
+
 def register(resource_id, metric_key):
     resource_uri = request_subscription_resource_location(resource_id, metric_key)
 
-    get_registration_port(resource_uri)
+    subscription_response = get_registration_port(resource_uri)
 
-    # get response proto
+    subscribe_for_measurements(subscription_response.host, subscription_response.port)
 
-#  rs = SubscriptionResponse()
-#  rs.ParseFromString(data)
-#  print ""
+    raw_input("press [enter] to _unsubscribe_ and _quit_")
+
 
 def metric_key_as_enum(key):
     if key == "cpu":
@@ -95,9 +106,12 @@ def metric_key_as_enum(key):
 
 def main():
     print "Welcome to dist-metrics client!"
+#    manual registration
 #    resourceId = raw_input("Register to host's messages: ")
 #    metricKey = raw_input("What metric? [cpu, memfree, memused]: ")
 #    register(resourceId, metricKey)
+
+#   auto registration
     register("moon", "memfree")
 
 if __name__ == '__main__':
