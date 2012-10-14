@@ -21,6 +21,8 @@ GET = "GET"
 POST = "POST"
 DELETE = "DELETE"
 
+listening = True
+
 def request_subscription_resource_location(resource_id, metric_key):
     print
     print "requesting:", POST, MONITOR_HTTP_URL, "/subscriptions"
@@ -64,14 +66,16 @@ def get_registration_port(resource_uri):
     return rq
 
 def subscribe_for_measurements(host, port):
-    raise BaseException("Implement me. \
-Should subscribe on a TCP connection on the given port, read it in a loop, \
-and print each proto recieved. The proto is [Measurement]")
-#    open tcp connection
-#    on each message do:
-#      m = Measurement()
-#      m.ParseFromString(data_from_tcp)
-#      print me...
+#    raise BaseException("Implement me. \
+#Should subscribe on a TCP connection on the given port, read it in a loop, \
+#and print each proto recieved. The proto is [Measurement]")
+    sock = socket.create_connection((host,port))
+    while listening:
+    	message = socket.recv(BUFFER_SIZE)
+	m = Measurement()
+      	m.ParseFromString(message)
+      	print m
+    sock.close()
 #   todo figure out a way to not block the main thread, so you can "press enter to quit"
 
 
@@ -83,7 +87,7 @@ def register(resource_id, metric_key):
     subscribe_for_measurements(subscription_response.host, subscription_response.port)
 
     raw_input("press [enter] to _unsubscribe_ and _quit_")
-
+    listening = False
 
 def metric_key_as_enum(key):
     if key == "cpu":
