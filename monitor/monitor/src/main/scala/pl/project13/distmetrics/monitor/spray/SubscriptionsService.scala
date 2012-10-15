@@ -15,7 +15,7 @@ import akka.util.duration._
 import akka.util.Timeout
 import cc.spray.http.{HttpHeaders, StatusCodes, StatusCode}
 import akka.pattern._
-import pl.project13.distmetrics.monitor.actor.{SubscriptionCreatedOrFound, SubscriptionDetailsFor, SubscriptionDelete}
+import pl.project13.distmetrics.monitor.actor.{SubscriptionCreated, SubscriptionDetailsFor, SubscriptionDelete}
 
 trait SubscriptionsService extends Directives with Logging
   with ProtoMarshalling {
@@ -53,10 +53,10 @@ trait SubscriptionsService extends Directives with Logging
 
 
   /** 202 - because we submit to the actor, without blocking */
-  def handleDeleteSubscription(subscriptionId: Int): (RequestContext) => Unit = try {
+  def handleDeleteSubscription(subscriptionId: Int): (RequestContext) => Unit = try { ctx =>
     subscriptionHandler ! SubscriptionDelete(subscriptionId)
 
-    _.complete(StatusCodes.Accepted, "")
+    ctx.complete(StatusCodes.Accepted, "Unregistering...")
   } catch {
     case ex: Exception =>
       logger.error("Exception during DELETE", ex)
@@ -74,14 +74,9 @@ trait SubscriptionsService extends Directives with Logging
   /**  */
   def handleRegistration(request: Subscribe.SubscribeRequest): (RequestContext) => Unit = {
     val futurePort = subscriptionHandler ? request
-    val createdOrFound = Await.result(futurePort, atMost).asInstanceOf[SubscriptionCreatedOrFound]
+    val created = Await.result(futurePort, atMost).asInstanceOf[SubscriptionCreated]
 
-    createdOrFound.isFreshResource match {
-      case true  =>
-        _.complete(StatusCodes.Created, HttpHeaders.Location(subscriptionResourceUri(createdOrFound.subscriptionId)) :: Nil, "")
-      case false =>
-        _.complete(StatusCodes.MovedPermanently, HttpHeaders.Location("localhost:8080/" + Subscriptions + "/" + createdOrFound.subscriptionId) :: Nil, "")
-    }
+    _.complete(StatusCodes.Created, HttpHeaders.Location(subscriptionResourceUri(created.subscriptionId)) :: Nil, "")
   }
 
   def subscriptionResourceUri(id: Int) =

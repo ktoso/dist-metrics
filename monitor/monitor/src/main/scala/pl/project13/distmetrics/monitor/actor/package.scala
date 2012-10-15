@@ -13,7 +13,7 @@ package object actor {
 
   case class EnqueueWrite(bytes: Array[Byte], port: Int)
 
-  case class SubscriptionCreatedOrFound(subscriptionId: Int, isFreshResource: Boolean)
+  case class SubscriptionCreated(subscriptionId: Int)
 
   case class DataReceived(channel: SocketChannel, data: Array[Byte])
 

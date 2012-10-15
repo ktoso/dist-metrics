@@ -24,7 +24,7 @@ trait ChannelReadOperation extends JavaNioConversions with Logging {
     try {
       numRead = socketChannel.read(this.readBuffer)
 
-      logger.info("Read [%s] bytes".format(numRead))
+      logger.trace("Read [%s] bytes".format(numRead))
 
       if (numRead == -1) {
         // Remote entity shut the socket down cleanly. Do the
@@ -85,7 +85,7 @@ trait ChannelWriteOperation extends JavaNioConversions with Logging {
     val buf = ByteBuffer.wrap(combined)
 
     // write the length
-    logger.info("Write content size prefix: %d".format(content.size))
+    logger.trace("Write content size prefix: %d".format(content.size))
     val lengthPrefix = ByteBuffer.allocate(4).putInt(content.size)
     socketChannel.write(lengthPrefix)
 

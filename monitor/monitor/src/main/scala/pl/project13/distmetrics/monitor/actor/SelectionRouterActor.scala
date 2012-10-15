@@ -53,13 +53,12 @@ class SelectionRouterActor(monitor: MonitorMain, metricHandlerActor: ActorRef, s
 
 
     case selectionKey: SelectionKey if selectionKey.isValid && selectionKey.isWritable && writeQueue.headOption.isDefined =>
-      logger.info("Write to channel...?")
       val (_, port) = writeQueue.head
       val maybePort = selectionKey.socketChannelLocalPort
       if (maybePort == port) {
         val dataToWrite = writeQueue.dequeueAll(_._2 == port)
 
-        logger.info("Write to selectionKey...")
+        logger.trace("Write to selectionKey...")
         writeAll(dataToWrite.map(_._1), selectionKey)
       }
 
