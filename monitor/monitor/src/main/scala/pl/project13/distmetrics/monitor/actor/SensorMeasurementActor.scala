@@ -1,11 +1,9 @@
 package pl.project13.distmetrics.monitor.actor
 
-import akka.actor.{OneForOneStrategy, ActorRef, Actor}
+import akka.actor.{ActorRef, Actor}
 import com.weiglewilczek.slf4s.Logging
 import pl.project13.distmetrics.common.proto.ProtoConversions
-import pl.project13.distmetrics.monitor.channel.ChannelWriteOperation
 import java.nio.channels.ServerSocketChannel
-import akka.actor.SupervisorStrategy.Restart
 
 class SensorMeasurementActor(subscriptionActor: ActorRef) extends Actor with ProtoConversions with Logging {
 

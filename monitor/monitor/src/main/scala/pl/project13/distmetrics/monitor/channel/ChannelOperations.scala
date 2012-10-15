@@ -5,7 +5,7 @@ import pl.project13.distmetrics.monitor.util.JavaNioConversions
 import java.nio.ByteBuffer
 import com.google.protobuf.GeneratedMessage
 import com.weiglewilczek.slf4s.Logging
-import java.io.IOException
+import java.io.{PrintWriter, IOException}
 
 trait ChannelReadOperation extends JavaNioConversions with Logging {
 
@@ -81,23 +81,16 @@ trait ChannelWriteOperation extends JavaNioConversions with Logging {
   def write(content: Array[Byte], key: SelectionKey) {
     val socketChannel = key.socketChannel
 
-    // Write until there's not more data ...
-    //         while (!queue.isEmpty()) {
-    val buf = ByteBuffer.wrap(content)
-    socketChannel.write(buf)
-    //           if (buf.remaining() > 0) {
-    //             // ... or the socket's buffer fills up
-    //             break;
-    //           }
-    //           queue.remove(0);
-    //         }
-    //
-    //         if (queue.isEmpty()) {
-    // We wrote away all data, so we're no longer interested
-    // in writing on this socket. Switch back to waiting for
-    // data.
-    key.interestOps(SelectionKey.OP_READ)
-    //         }
+    val combined: Array[Byte] = (ByteBuffer.allocate(4).putInt(content.size).array.toList ::: content.toList).toArray
+    val buf = ByteBuffer.wrap(combined)
+
+    // write the length
+    logger.info("Write content size prefix: %d".format(content.size))
+    val lengthPrefix = ByteBuffer.allocate(4).putInt(content.size)
+    socketChannel.write(lengthPrefix)
+
+    // write the proto message
+    socketChannel write buf
   }
 
   def writeAll(contents: Seq[Array[Byte]], key: SelectionKey) = try {
@@ -105,8 +98,7 @@ trait ChannelWriteOperation extends JavaNioConversions with Logging {
     socketChannel.socket().setKeepAlive(true)
 
     contents foreach { content =>
-      val buf = ByteBuffer.wrap(content)
-      socketChannel.write(buf)
+      write(content, key)
       logger.info("Wrote [%s] bytes to channel".format(content.size))
     }
 

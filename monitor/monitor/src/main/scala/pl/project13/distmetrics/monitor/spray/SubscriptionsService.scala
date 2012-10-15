@@ -44,7 +44,7 @@ trait SubscriptionsService extends Directives with Logging
             handleObtainPort(subscriptionId)
           }
         } ~
-        delete { 
+        delete {
           handleDeleteSubscription(subscriptionId)
         }
       }

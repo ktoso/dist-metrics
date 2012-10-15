@@ -2,6 +2,7 @@
 
 import httplib
 import socket
+import struct
 
 import time
 import threading
@@ -17,7 +18,7 @@ MONITOR_HTTP_URL = MONITOR_HOST + ":" + str(MONITOR_HTTP_PORT)
 
 TCP_IP = '127.0.0.1'
 TCP_PORT = 4444
-BUFFER_SIZE = 18
+BUFFER_SIZE = 2048
 MESSAGE = "Hello, World!"
 
 # http, duh
@@ -26,6 +27,9 @@ POST = "POST"
 DELETE = "DELETE"
 
 class ThreadedClient(threading.Thread):
+    # see http://docs.python.org/library/struct.html
+    SIGNED_INT_BIG_ENDIAN = '>i'
+
     def __init__(self, subscription_id, host, port):
         self.subscription_id = subscription_id
         self.host = host
@@ -38,27 +42,38 @@ class ThreadedClient(threading.Thread):
         delete_subscription(self.subscription_id)
         self.running = False
 
+    def socket_read_n(self, sock, n):
+        """ Read exactly n bytes from the socket.
+            Raise RuntimeError if the connection closed before
+            n bytes were read.
+        """
+        buf = ''
+        while n > 0:
+            data = sock.recv(n)
+            if data == '':
+                raise RuntimeError('unexpected connection close')
+            buf += data
+            n -= len(data)
+
+        return buf
+
     def run(self):
         print("Reading from {}:{}".format(self.host, self.port))
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # check and turn on TCP Keepalive
-#        x = s.getsockopt( socket.SOL_SOCKET, socket.SO_KEEPALIVE)
-#        if not x:
-#            print 'Socket Keepalive off, turning on'
-#            x = s.setsockopt( socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
-#            print 'setsockopt = ', x
-#        else:
-#            print 'Socket Keepalive already on'
-
-        s.connect((self.host, self.port))
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect((self.host, self.port))
 
         while self.running:
-            message = s.recv(BUFFER_SIZE)
+            len_buf = self.socket_read_n(sock, 4)
+            msg_len = struct.unpack(self.SIGNED_INT_BIG_ENDIAN, len_buf)[0]
+            print "expecting message length: ", msg_len
+            msg_buf = self.socket_read_n(sock, msg_len)
+
             m = Measurement()
-            m.ParseFromString(message)
+            m.ParseFromString(msg_buf)
             if m.IsInitialized():
                 print m
-        s.close()
+        sock.close()
+
 
 def delete_subscription(subscription_id):
     print
@@ -158,7 +173,7 @@ def main():
     #   auto registration
     client = register("moon", "cpu")
 
-    raw_input("To [quit] press enter...\n\n")
+    raw_input("")
 
     print "Stopping clients..."
     client.stop()

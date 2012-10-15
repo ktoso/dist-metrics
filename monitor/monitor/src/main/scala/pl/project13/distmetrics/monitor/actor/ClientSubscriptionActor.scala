@@ -1,20 +1,17 @@
 package pl.project13.distmetrics.monitor.actor
 
-import akka.actor.{ActorRef, Actor}
+import akka.actor.Actor
 import pl.project13.distmetrics.common.proto
 import proto.Common.MetricType
 import proto.Measure.Measurement
 import proto.Subscribe.SubscribeRequest
-import proto.{ProtoConversions}
+import proto.ProtoConversions
 import com.weiglewilczek.slf4s.Logging
 import java.util.concurrent.ConcurrentHashMap
-import collection.JavaConversions._
 import pl.project13.distmetrics.monitor.runner.MonitorMain
-import pl.project13.distmetrics.monitor.channel.ChannelWriteOperation
-import java.nio.channels.{ServerSocketChannel, SocketChannel, SelectionKey}
+import java.nio.channels.{ServerSocketChannel, SelectionKey}
 import pl.project13.distmetrics.monitor.config.MonitorConfig
 import collection.JavaConversions._
-import scalaz.Scalaz._
 
 class ClientSubscriptionActor(monitor: MonitorMain, config: MonitorConfig) extends Actor with ProtoConversions with Logging {
 

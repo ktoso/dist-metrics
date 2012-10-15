@@ -43,7 +43,7 @@ func main() {
 			return
 		}
 
-    println("send measurement: ", metric.String())
+		println("send measurement: ", metric.String())
 		data, _ := proto.Marshal(metric)
 		_, err = c.Write(data)
 
