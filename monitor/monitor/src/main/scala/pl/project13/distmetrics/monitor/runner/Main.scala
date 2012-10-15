@@ -18,6 +18,8 @@ import cc.spray.can.server.HttpServer
 import cc.spray.io.pipelines.MessageHandlerDispatch
 import akka.pattern._
 import akka.dispatch.Await
+import akka.actor.OneForOneStrategy
+import akka.actor.SupervisorStrategy._
 import akka.util.{Timeout, Duration}
 import akka.util.duration._
 import java.util.concurrent._
@@ -40,14 +42,17 @@ trait MonitorMain extends Logging
 
   val registeredChannels = new AtomicInteger(0)
 
+  private val interestOpChanges = mutable.Queue[() => Unit]()
+
   /**
    * As channel registration has be on the thread the selectr was created on,
    * we use this queue to create tasks for this thread. See also `registerNewChannels`.
    */
-  val channelsToRegister = mutable.Queue[() => SelectionKey]()
+  private val channelsToRegister = mutable.Queue[() => SelectionKey]()
 
   @tailrec final def loop() {
-    selector.select(1.second.toMillis)
+    selector.select(100.millis.toMillis)
+    changeInterestSets(interestOpChanges)
     registerNewChannels(channelsToRegister)
 
     val selKeysIterator = selector.selectedKeys.iterator
@@ -67,7 +72,7 @@ trait MonitorMain extends Logging
   }
 
   @tailrec
-  final def registerNewChannels(toRegister: mutable.Queue[() => SelectionKey]): Unit = {
+  private final def registerNewChannels(toRegister: mutable.Queue[() => SelectionKey]) {
     toRegister.dequeueFirst(_ => true) match {
       case Some(register) =>
         register()
@@ -77,8 +82,27 @@ trait MonitorMain extends Logging
     }
   }
 
-  def registerForAccept(channel: ServerSocketChannel, blocking: Boolean = true): SelectionKey = {
-    logger.info("Will eneueue socket chanell to be registered...")
+//  @tailrec
+  private final def changeInterestSets(requests: mutable.Queue[() => Unit]) {
+    requests.dequeueFirst(_ => true) match {
+      case Some(changeInterestSet) =>
+        logger.info("Change interest set..." + requests.size)
+        changeInterestSet()
+//        changeInterestSets(requests)
+
+      case None  => ()
+    }
+  }
+
+  def registerInterestOpsChange(selectionKey: SelectionKey, ops: Int) {
+    interestOpChanges enqueue { () =>
+      val socket = selectionKey.socketChannel
+      socket.keyFor(this.selector).interestOps(ops)
+    }
+  }
+
+  def registerForAccept(channel: ServerSocketChannel, writeable: Boolean, blockingCreate: Boolean = true): SelectionKey = {
+    logger.info("Will enqueue socket channel to be registered...")
     val selectionKeyFuture = SettableFuture.create[SelectionKey]
 
     // enqueue to be processed on the servers selector thread (see NIO docs for channel register)
@@ -90,7 +114,7 @@ trait MonitorMain extends Logging
       selectionKey
     }
 
-    if (blocking)
+    if (blockingCreate)
       selectionKeyFuture.get(30.seconds.toMillis, TimeUnit.MILLISECONDS)
     else
       null
@@ -104,7 +128,7 @@ trait MonitorMain extends Logging
    *
    * @return (opened port was this? the subscription id, which port was opened)
    */
-  def openNewChannel(blocking: Boolean = true) = {
+  def openNewChannel(writeable: Boolean, blockingCreate: Boolean = true) = {
     val openChan = registeredChannels.getAndIncrement()
     val portToUse = config.sensorPort + openChan
 
@@ -113,8 +137,7 @@ trait MonitorMain extends Logging
     serverSocketChannel.configureBlocking(false)
     serverSocketChannel.socket().bind(portToUse)
 
-//    val selectionKey = serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT)
-    val selectionKey = registerForAccept(serverSocketChannel, blocking)
+    val selectionKey = registerForAccept(serverSocketChannel, writeable, blockingCreate)
 
     logger.info("Opened new channel on [%s]. Already [%s] channels open".format(portToUse, registeredChannels.get))
     ChannelInformation(openChan, selectionKey)
@@ -131,7 +154,7 @@ trait MonitorActorSystem extends Logging {
   logger.info("Starting handler actors ...")
   val subscriptionActor = system.actorOf(Props(new ClientSubscriptionActor(this, config)), name = "subscription-handler")
   val sensorMeasurementActor = system.actorOf(Props(new SensorMeasurementActor(subscriptionActor)), name = "measurement-handler")
-  val selectionRouterActor = system.actorOf(Props( new SelectionRouterActor(sensorMeasurementActor, subscriptionActor)), name = "selection-handler")
+  val selectionRouterActor = system.actorOf(Props( new SelectionRouterActor(this, sensorMeasurementActor, subscriptionActor)), name = "selection-handler")
 
 
   logger.info("Starting spray.cc ...")
@@ -179,7 +202,7 @@ object Main extends App with MonitorMain with MonitorActorSystem {
 
   sprayCanServer ! HttpServer.Bind(config.host, config.port)
 
-  openNewChannel(blocking = false)
+  openNewChannel(writeable = false, blockingCreate = false)
   loop()
 
   override def handleReadData(socketChannel: SocketChannel, data: Array[Byte], bytes: Long) {

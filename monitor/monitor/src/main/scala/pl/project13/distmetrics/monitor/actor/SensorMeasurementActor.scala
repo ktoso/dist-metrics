@@ -1,14 +1,21 @@
 package pl.project13.distmetrics.monitor.actor
 
-import akka.actor.{ActorRef, Actor}
+import akka.actor.{OneForOneStrategy, ActorRef, Actor}
 import com.weiglewilczek.slf4s.Logging
 import pl.project13.distmetrics.common.proto.ProtoConversions
 import pl.project13.distmetrics.monitor.channel.ChannelWriteOperation
+import java.nio.channels.ServerSocketChannel
+import akka.actor.SupervisorStrategy.Restart
 
-class SensorMeasurementActor(subscriptionActor: ActorRef) extends Actor with ProtoConversions with Logging
-  with ChannelWriteOperation {
+class SensorMeasurementActor(subscriptionActor: ActorRef) extends Actor with ProtoConversions with Logging {
+
+  var selectionRouterActor: Option[ActorRef] = None
 
   protected def receive = {
+
+    case RegisterSelectionRouterActor(selectionActor) =>
+      this.selectionRouterActor = Some(selectionActor)
+
     case DataReceived(channel, data) =>
       logger.debug("Recieved [%s] bytes of data, parsing as [%s]".format(data.size, "Measurement"))
 
@@ -20,8 +27,9 @@ class SensorMeasurementActor(subscriptionActor: ActorRef) extends Actor with Pro
 
     case PushMeasurement(measurement, selectionKey) =>
       val bytes = measurement.toByteArray
-      logger.info("Writing Measurement to channel ([%s] bytes)...".format(bytes.size))
-      write(bytes, selectionKey)
+      val port = selectionKey.channel.asInstanceOf[ServerSocketChannel].socket.getLocalPort
+      logger.info("Enqueue write of Measurement to channel ([%s] bytes)...".format(bytes.size))
+      selectionRouterActor map { _ ! EnqueueWrite(bytes, port) }
   }
 
 }

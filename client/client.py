@@ -40,19 +40,23 @@ class ThreadedClient(threading.Thread):
 
     def run(self):
         print("Reading from {}:{}".format(self.host, self.port))
-        s = socket.create_connection((self.host, self.port))
-        s.setblocking(0) # is non-blocking
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # check and turn on TCP Keepalive
+        x = s.getsockopt( socket.SOL_SOCKET, socket.SO_KEEPALIVE)
+        if not x:
+            print 'Socket Keepalive off, turning on'
+            x = s.setsockopt( socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+            print 'setsockopt = ', x
+        else:
+            print 'Socket Keepalive already on'
+
+        s.connect((self.host, self.port))
+
         while self.running:
-            try:
-                print "."
-                message = s.recv(BUFFER_SIZE)
-                m = Measurement()
-                m.ParseFromString(message)
-                print m
-                time.sleep(1)
-            except:
-                s.close()
-                return
+            message = s.recv(BUFFER_SIZE)
+            m = Measurement()
+            m.ParseFromString(message)
+            print "Got measurement: ", m
         s.close()
 
 def delete_subscription(subscription_id):
@@ -61,7 +65,7 @@ def delete_subscription(subscription_id):
     print "requesting:", DELETE, MONITOR_HTTP_URL, subscription_path
 
     conn = httplib.HTTPConnection(MONITOR_HTTP_URL)
-    conn.request(DELETE, MONITOR_HTTP_URL + subscription_path)
+    conn.request(DELETE, "http://" + MONITOR_HTTP_URL + subscription_path)
     response = conn.getresponse()
     print "response status: ", response.status, response.reason
 
@@ -91,7 +95,7 @@ def request_subscription_resource_location(resource_id, metric_key):
 
 def get_registration_port(resource_uri):
     print
-    print "requesting:", POST, resource_uri
+    print "requesting:", GET, resource_uri
     host_port, path = resource_uri.split('/', 1)
     conn = httplib.HTTPConnection(host_port)
 
@@ -151,7 +155,8 @@ def main():
     #   auto registration
     client = register("moon", "cpu")
 
-    raw_input("To [quit] press enter...")
+    raw_input("To [quit] press enter...\n\n")
+
     print "Stopping clients..."
     client.stop()
     exit(0)

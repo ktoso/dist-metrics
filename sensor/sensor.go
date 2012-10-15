@@ -4,7 +4,6 @@ import (
 	"log"
 
 	"fmt"
-	"io"
 	"math/rand"
 	"net"
 	"time"
@@ -21,19 +20,6 @@ var sensorDelayRaw, _ = c.String("sensor", "delay")
 var sensorDelay, _ = time.ParseDuration(sensorDelayRaw)
 var monitorHost, _ = c.String("monitor", "host")
 var monitorPort, _ = c.Int("monitor", "port")
-
-func Reader(r io.Reader) {
-	buf := make([]byte, 1024)
-
-	for {
-		n, err := r.Read(buf[:])
-		if err != nil {
-			return
-		}
-		println("Client got:")
-		println(string(buf[0:n]))
-	}
-}
 
 func main() {
 	log.Printf("Host name configured as: %s", sensorHost)
@@ -52,11 +38,12 @@ func main() {
 		}
 
 		c, err := net.Dial("tcp", fmt.Sprintf("%s:%d", monitorHost, monitorPort))
-
 		if err != nil {
 			println("dial error", err.Error())
 			return
 		}
+
+    println("send measurement: ", metric.String())
 		data, _ := proto.Marshal(metric)
 		_, err = c.Write(data)
 

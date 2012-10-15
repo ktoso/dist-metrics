@@ -9,6 +9,9 @@ trait JavaNioConversions {
   class RichSelectionKey(key: SelectionKey) {
     def serverSocketChannel = key.channel.asInstanceOf[ServerSocketChannel]
     def socketChannel = key.channel.asInstanceOf[SocketChannel]
+
+    def serverSocketChannelLocalPort = serverSocketChannel.socket.getLocalPort
+    def socketChannelLocalPort = socketChannel.socket.getLocalPort
   }
 
   implicit def num2InetSocketAddres(in: Int) = new InetSocketAddress(in)

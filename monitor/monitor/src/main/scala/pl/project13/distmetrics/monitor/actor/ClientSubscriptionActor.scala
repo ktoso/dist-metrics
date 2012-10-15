@@ -1,6 +1,6 @@
 package pl.project13.distmetrics.monitor.actor
 
-import akka.actor.Actor
+import akka.actor.{ActorRef, Actor}
 import pl.project13.distmetrics.common.proto
 import proto.Common.MetricType
 import proto.Measure.Measurement
@@ -13,9 +13,10 @@ import pl.project13.distmetrics.monitor.runner.MonitorMain
 import pl.project13.distmetrics.monitor.channel.ChannelWriteOperation
 import java.nio.channels.{ServerSocketChannel, SocketChannel, SelectionKey}
 import pl.project13.distmetrics.monitor.config.MonitorConfig
+import collection.JavaConversions._
+import scalaz.Scalaz._
 
-class ClientSubscriptionActor(monitor: MonitorMain, config: MonitorConfig) extends Actor with ProtoConversions with Logging
-  with ChannelWriteOperation {
+class ClientSubscriptionActor(monitor: MonitorMain, config: MonitorConfig) extends Actor with ProtoConversions with Logging {
 
   type ResourceId = String
   type InterestedIn = (ResourceId, MetricType)
@@ -24,9 +25,10 @@ class ClientSubscriptionActor(monitor: MonitorMain, config: MonitorConfig) exten
   private val topicToSubscriptionId = new ConcurrentHashMap[InterestedIn, SubscriptionId]()
   private val subscriptionIdToSelKey = new ConcurrentHashMap[SubscriptionId, SelectionKey]()
 
-  protected def receive = {
+  def receive = {
     case RegisterSensorChannel =>
       openSocketForSensor()
+
 
     case request: SubscribeRequest =>
       val resourceId = request.getResourceId
@@ -35,7 +37,7 @@ class ClientSubscriptionActor(monitor: MonitorMain, config: MonitorConfig) exten
       findSubscribersOf(resourceId, metricType) match {
         case None => // create new channel
           val ChannelInformation(subscriptionId, selKey) = openSubscriptionSocketForClient()
-          logger.info("Created channel for subscription [%s] on port [%s], for metrics [%s]".format(subscriptionId, selKey, resourceId + "-" + metricType))
+          logger.info("Created channel for subscription [%s], for metrics [%s]".format(subscriptionId, key(resourceId, metricType)))
 
           topicToSubscriptionId((resourceId, metricType)) = subscriptionId
           subscriptionIdToSelKey(subscriptionId) = selKey
@@ -46,6 +48,7 @@ class ClientSubscriptionActor(monitor: MonitorMain, config: MonitorConfig) exten
           sender ! SubscriptionCreatedOrFound(subscriptionId, isFreshResource = false)
       }
 
+
     case SubscriptionDetailsFor(subscriptionId) =>
       val selKey = subscriptionIdToSelKey(subscriptionId)
       val localPort = selKey.channel().asInstanceOf[ServerSocketChannel].socket().getLocalPort
@@ -53,29 +56,43 @@ class ClientSubscriptionActor(monitor: MonitorMain, config: MonitorConfig) exten
 
       sender ! SubscriptionResponse(subscriptionId, config.host, localPort)
 
+
     case SubscriptionChannelsToPublish(measurement) =>
-      logger.info("Identify selectionKey for measurement [%s-%s], and request PushMeasurement".format(measurement.getResourceId, measurement.getMetricType))
+      logger.info("Identify selectionKey for measurement [%s], and request PushMeasurement".format(key(measurement)))
       findSelectionKeyFor(measurement) match {
-        case Some(selectionKey) => sender ! PushMeasurement(measurement, selectionKey)
-        case None => logger.debug("No one is listening for [%s-%s]".format(measurement.getResourceId, measurement.getMetricType))
+        case Some(selectionKey) =>
+          sender ! PushMeasurement(measurement, selectionKey)
+
+        case None =>
+          logger.debug("No one is listening for [%s]".format(key(measurement)))
       }
 
 
     case SubscriptionDelete(subscriptionId) =>
-//      closeSubscription()
-      topicToSubscriptionId.remove(subscriptionId)
+      deleteSubscription(subscriptionId)
 
+  }
+
+
+  def deleteSubscription(subscriptionId: Int) {
+//    subscriptionIdToSelKey.remove(subscriptionId)
+//
+//    val before = topicToSubscriptionId.size()
+//    topicToSubscriptionId retain { (topic, id) => id /== subscriptionId }
+//    val after = topicToSubscriptionId.size()
+//    require(before > after, "Should have made it smaller. From [%s] to [%s] ".format(before, after))
   }
 
   def openSubscriptionSocketForClient() = {
-    monitor.openNewChannel()
+    monitor.openNewChannel(writeable = true)
   }
 
   def openSocketForSensor() = {
-    monitor.openNewChannel()
+    monitor.openNewChannel(writeable = false)
   }
 
-  def key(resourceId: String, metricType: MetricType) = resourceId + "-" + metricType.getNumber
+  def key(measurement: Measurement): String = key(measurement.getResourceId, measurement.getMetricType)
+  def key(resourceId: String, metricType: MetricType): String = resourceId + "-" + metricType.getValueDescriptor.getName
 
   def findSelectionKeyFor(measurement: Measurement): Option[SelectionKey] = {
     val subscriptionId = findSubscriptionIdIdFor(measurement)

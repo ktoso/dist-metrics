@@ -6,7 +6,6 @@ import java.nio.ByteBuffer
 import com.google.protobuf.GeneratedMessage
 import com.weiglewilczek.slf4s.Logging
 import java.io.IOException
-import scalaz.Scalaz._
 
 trait ChannelReadOperation extends JavaNioConversions with Logging {
 
@@ -25,7 +24,7 @@ trait ChannelReadOperation extends JavaNioConversions with Logging {
     try {
       numRead = socketChannel.read(this.readBuffer)
 
-//      logger.info("Read [%s] bytes".format(numRead))
+      logger.info("Read [%s] bytes".format(numRead))
 
       if (numRead == -1) {
         // Remote entity shut the socket down cleanly. Do the
@@ -41,9 +40,9 @@ trait ChannelReadOperation extends JavaNioConversions with Logging {
       case ex: IOException =>
         // The remote forcibly closed the connection, cancel
         // the selection key and close the channel.
-        logger.error("Closing connection", ex)
-        key.cancel()
-        socketChannel.close()
+//        logger.error("Closing connection", ex)
+//        key.cancel()
+//        socketChannel.close()
     }
   }
 
@@ -80,40 +79,90 @@ trait ChannelReadOperation extends JavaNioConversions with Logging {
 trait ChannelWriteOperation extends JavaNioConversions with Logging {
 
   def write(content: Array[Byte], key: SelectionKey) {
-    val bytesCount = content.size
-    if (key.isValid && key.isWritable) {
-      val channel = key.socketChannel
-      val wrote = channel.write(ByteBuffer.wrap(content))
+    val socketChannel = key.socketChannel
 
-      if (wrote /== bytesCount)
-        throw new Exception("Wasn't able to write all bytes to channel! [%s] to write, but wrote [%s]".format(bytesCount, wrote))
-    } else {
-      throw new Exception("Channel was not writeable!")
-    }
+    // Write until there's not more data ...
+    //         while (!queue.isEmpty()) {
+    val buf = ByteBuffer.wrap(content)
+    socketChannel.write(buf)
+    //           if (buf.remaining() > 0) {
+    //             // ... or the socket's buffer fills up
+    //             break;
+    //           }
+    //           queue.remove(0);
+    //         }
+    //
+    //         if (queue.isEmpty()) {
+    // We wrote away all data, so we're no longer interested
+    // in writing on this socket. Switch back to waiting for
+    // data.
+    key.interestOps(SelectionKey.OP_READ)
+    //         }
   }
 
+  def writeAll(contents: Seq[Array[Byte]], key: SelectionKey) = try {
+    val socketChannel = key.socketChannel
+
+    contents foreach { content =>
+      val buf = ByteBuffer.wrap(content)
+      socketChannel.write(buf)
+      socketChannel.close()
+    }
+    //           if (buf.remaining() > 0) {
+    //             // ... or the socket's buffer fills up
+    //             break;
+    //           }
+    //           queue.remove(0);
+    //         }
+
+    key.interestOps(SelectionKey.OP_READ)
+  } catch {
+    case ex: IOException =>
+      logger.warn("Had to close channel during write. Probably client disconnected.")
+      key.channel().close()
+      key.cancel()
+  }
 }
 
 trait ChannelAcceptOperation extends JavaNioConversions with Logging {
 
-  def accept(selector: Selector, key: SelectionKey) {
-      // For an accept to be pending the channel must be a server socket channel.
-      val serverSocketChannel = key.serverSocketChannel
+  def acceptForRead(selector: Selector, key: SelectionKey) {
+    // For an accept to be pending the channel must be a server socket channel.
+    val serverSocketChannel = key.serverSocketChannel
 
-      // Accept the connection and make it non-blocking
-      serverSocketChannel.accept() match {
-        case null =>
-          // already non-blocking and configured
+    // Accept the connection and make it non-blocking
+    serverSocketChannel.accept() match {
+      case null =>
+      // already non-blocking and configured
 
-        case socketChannel =>
-          val socket = socketChannel.socket()
-          socketChannel.configureBlocking(false)
+      case socketChannel =>
+        val socket = socketChannel.socket()
+        socketChannel.configureBlocking(false)
 
-          // Register the new SocketChannel with our Selector, indicating
-          // we'd like to be notified when there's data waiting to be read
-          socketChannel.register(selector, SelectionKey.OP_READ)
-      }
+        // Register the new SocketChannel with our Selector, indicating
+        // we'd like to be notified when there's data waiting to be read
+        socketChannel.register(selector, SelectionKey.OP_READ)
     }
+  }
+
+  def acceptForWrite(selector: Selector, key: SelectionKey) {
+    // For an accept to be pending the channel must be a server socket channel.
+    val serverSocketChannel = key.serverSocketChannel
+
+    // Accept the connection and make it non-blocking
+    serverSocketChannel.accept() match {
+      case null =>
+      // already non-blocking and configured
+
+      case socketChannel =>
+        val socket = socketChannel.socket()
+        socketChannel.configureBlocking(false)
+
+        // Register the new SocketChannel with our Selector, indicating
+        // we'd like to be notified when there's data waiting to be read
+        socketChannel.register(selector, SelectionKey.OP_WRITE)
+    }
+  }
 }
 
 trait ChannelOperations
