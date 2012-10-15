@@ -6,6 +6,7 @@ import struct
 
 import time
 import threading
+import sys
 
 import pb.common_pb2 as MetricType
 from pb.measure_pb2 import Measurement
@@ -15,11 +16,6 @@ from pb.subscribe_pb2 import SubscribeRequest, SubscriptionResponse
 MONITOR_HOST = "127.0.0.1"
 MONITOR_HTTP_PORT = 8080
 MONITOR_HTTP_URL = MONITOR_HOST + ":" + str(MONITOR_HTTP_PORT)
-
-TCP_IP = '127.0.0.1'
-TCP_PORT = 4444
-BUFFER_SIZE = 2048
-MESSAGE = "Hello, World!"
 
 # http, duh
 GET = "GET"
@@ -36,7 +32,7 @@ class ThreadedClient(threading.Thread):
         self.port = port
         self.running = True
         threading.Thread.__init__(self)
-        self.daemon = False
+        self.daemon = True
 
     def stop(self):
         delete_subscription(self.subscription_id)
@@ -73,7 +69,6 @@ class ThreadedClient(threading.Thread):
             if m.IsInitialized():
                 print m
         sock.close()
-
 
 def delete_subscription(subscription_id):
     print
@@ -177,7 +172,10 @@ def main():
 
     print "Stopping clients..."
     client.stop()
-    exit(0)
+    sys.exit(0)
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except (KeyboardInterrupt, SystemExit):
+        sys.exit()
