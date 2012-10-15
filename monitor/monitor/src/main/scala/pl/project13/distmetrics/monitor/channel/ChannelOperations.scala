@@ -102,20 +102,14 @@ trait ChannelWriteOperation extends JavaNioConversions with Logging {
 
   def writeAll(contents: Seq[Array[Byte]], key: SelectionKey) = try {
     val socketChannel = key.socketChannel
+    socketChannel.socket().setKeepAlive(true)
 
     contents foreach { content =>
       val buf = ByteBuffer.wrap(content)
       socketChannel.write(buf)
-      socketChannel.close()
+      logger.info("Wrote [%s] bytes to channel".format(content.size))
     }
-    //           if (buf.remaining() > 0) {
-    //             // ... or the socket's buffer fills up
-    //             break;
-    //           }
-    //           queue.remove(0);
-    //         }
 
-    key.interestOps(SelectionKey.OP_READ)
   } catch {
     case ex: IOException =>
       logger.warn("Had to close channel during write. Probably client disconnected.")

@@ -42,13 +42,13 @@ class ThreadedClient(threading.Thread):
         print("Reading from {}:{}".format(self.host, self.port))
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # check and turn on TCP Keepalive
-        x = s.getsockopt( socket.SOL_SOCKET, socket.SO_KEEPALIVE)
-        if not x:
-            print 'Socket Keepalive off, turning on'
-            x = s.setsockopt( socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
-            print 'setsockopt = ', x
-        else:
-            print 'Socket Keepalive already on'
+#        x = s.getsockopt( socket.SOL_SOCKET, socket.SO_KEEPALIVE)
+#        if not x:
+#            print 'Socket Keepalive off, turning on'
+#            x = s.setsockopt( socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+#            print 'setsockopt = ', x
+#        else:
+#            print 'Socket Keepalive already on'
 
         s.connect((self.host, self.port))
 
@@ -56,7 +56,8 @@ class ThreadedClient(threading.Thread):
             message = s.recv(BUFFER_SIZE)
             m = Measurement()
             m.ParseFromString(message)
-            print "Got measurement: ", m
+            if m.IsInitialized():
+                print m
         s.close()
 
 def delete_subscription(subscription_id):
@@ -68,6 +69,8 @@ def delete_subscription(subscription_id):
     conn.request(DELETE, "http://" + MONITOR_HTTP_URL + subscription_path)
     response = conn.getresponse()
     print "response status: ", response.status, response.reason
+    print "response body: ", response.read()
+    response.close()
 
 
 def request_subscription_resource_location(resource_id, metric_key):

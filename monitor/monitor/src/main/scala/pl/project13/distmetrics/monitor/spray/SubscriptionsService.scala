@@ -53,10 +53,14 @@ trait SubscriptionsService extends Directives with Logging
 
 
   /** 202 - because we submit to the actor, without blocking */
-  def handleDeleteSubscription(subscriptionId: Int): (RequestContext) => Unit = {
+  def handleDeleteSubscription(subscriptionId: Int): (RequestContext) => Unit = try {
     subscriptionHandler ! SubscriptionDelete(subscriptionId)
 
     _.complete(StatusCodes.Accepted, "")
+  } catch {
+    case ex: Exception =>
+      logger.error("Exception during DELETE", ex)
+      _.complete(StatusCodes.InternalServerError, "Internal Server Error")
   }
 
   /** 200 - because we're blocking to obtain the port from an actor */
